@@ -1,2 +1,4 @@
 /node_modules/
 /lib-es5/
+.DS_store
+*/.DS_store
