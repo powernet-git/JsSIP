@@ -1,5 +1,5 @@
 /*
- * JsSIP v3.10.2
+ * JsSIP v3.10.4
  * the Javascript SIP library
  * Copyright: 2012-2024 
  * Homepage: https://jssip.net
@@ -14539,8 +14539,6 @@ function _isNativeReflectConstruct() { try { var t = !Boolean.prototype.valueOf.
 function _getPrototypeOf(t) { return _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf.bind() : function (t) { return t.__proto__ || Object.getPrototypeOf(t); }, _getPrototypeOf(t); }
 function _inherits(t, e) { if ("function" != typeof e && null !== e) throw new TypeError("Super expression must either be null or a function"); t.prototype = Object.create(e && e.prototype, { constructor: { value: t, writable: !0, configurable: !0 } }), Object.defineProperty(t, "prototype", { writable: !1 }), e && _setPrototypeOf(t, e); }
 function _setPrototypeOf(t, e) { return _setPrototypeOf = Object.setPrototypeOf ? Object.setPrototypeOf.bind() : function (t, e) { return t.__proto__ = e, t; }, _setPrototypeOf(t, e); }
-/* globals RTCPeerConnection: false, RTCSessionDescription: false */
-
 var EventEmitter = require('events').EventEmitter;
 var sdp_transform = require('sdp-transform');
 var Logger = require('./Logger');
@@ -16109,6 +16107,7 @@ module.exports = /*#__PURE__*/function (_EventEmitter) {
           return Promise.reject(error);
         });
       }).then(function () {
+        var _connection$getSender;
         // Resolve right away if 'pc.iceGatheringState' is 'complete'.
         /**
          * Resolve right away if:
@@ -16124,8 +16123,8 @@ module.exports = /*#__PURE__*/function (_EventEmitter) {
          * trigger the icecandidate event, even though it will end up being used as the local candidate.
          */
 
-        var readyOnSelectedCandidatePair = constraints && constraints.readyOnSelectedCandidatePair && type === 'answer';
-        var iceTransport = type === 'answer' ? connection.getSenders()[0].transport.iceTransport : null;
+        var readyOnSelectedCandidatePair = (constraints === null || constraints === void 0 ? void 0 : constraints.readyOnSelectedCandidatePair) && type === 'answer';
+        var iceTransport = type === 'answer' ? connection === null || connection === void 0 || (_connection$getSender = connection.getSenders()) === null || _connection$getSender === void 0 || (_connection$getSender = _connection$getSender[0]) === null || _connection$getSender === void 0 || (_connection$getSender = _connection$getSender.transport) === null || _connection$getSender === void 0 ? void 0 : _connection$getSender.iceTransport : null;
         if (connection.iceGatheringState === 'complete' && !iceRestart || connection.iceGatheringState === 'gathering' && _this13._iceReady) {
           _this13._rtcReady = true;
           var e = {
@@ -21170,11 +21169,7 @@ module.exports = /*#__PURE__*/function (_EventEmitter) {
     key: "_loadConfig",
     value: function _loadConfig(configuration) {
       // Check and load the given configuration.
-      try {
-        config.load(this._configuration, configuration);
-      } catch (e) {
-        throw e;
-      }
+      config.load(this._configuration, configuration);
 
       // Post Configuration Process.
 
@@ -24641,7 +24636,7 @@ module.exports={
   "name": "@per_moeller/jssip-telecomx",
   "title": "JsSIP",
   "description": "the Javascript SIP library",
-  "version": "3.10.3",
+  "version": "3.10.4",
   "homepage": "https://jssip.net",
   "contributors": [
     "José Luis Millán <jmillan@aliax.net> (https://github.com/jmillan)",
@@ -24666,8 +24661,8 @@ module.exports={
     "url": "https://github.com/versatica/JsSIP/issues"
   },
   "dependencies": {
-    "@types/events": "^3.0.0",
     "@types/debug": "^4.1.7",
+    "@types/events": "^3.0.0",
     "debug": "^4.3.1",
     "events": "^3.3.0",
     "sdp-transform": "^2.14.1"
@@ -24681,7 +24676,7 @@ module.exports={
     "fancy-log": "^1.3.3",
     "gulp": "^4.0.2",
     "gulp-babel": "^8.0.0",
-    "gulp-eslint": "^5.0.0",
+    "gulp-eslint": "^6.0.0",
     "gulp-expect-file": "^1.0.2",
     "gulp-header": "^2.0.9",
     "gulp-nodeunit-runner": "^0.2.2",
