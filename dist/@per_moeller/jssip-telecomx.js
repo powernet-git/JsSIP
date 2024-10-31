@@ -16107,7 +16107,7 @@ module.exports = /*#__PURE__*/function (_EventEmitter) {
           return Promise.reject(error);
         });
       }).then(function () {
-        var _connection$getSender;
+        var _connection$getConfig, _connection$getSender;
         // Resolve right away if 'pc.iceGatheringState' is 'complete'.
         /**
          * Resolve right away if:
@@ -16117,14 +16117,30 @@ module.exports = /*#__PURE__*/function (_EventEmitter) {
         var iceRestart = constraints && constraints.iceRestart;
 
         /**
-         * If readyOnSelectedCandidatePair is true, then we only run the 'ready'-function
-         * when the selectedCandidatePair event runs.
-         * Sometimes the public IP returned from the STUN-server does not
-         * trigger the icecandidate event, even though it will end up being used as the local candidate.
+         * If forceUseStunResponse is true, then essentially we want to always only use
+         * the IP-address from our STUN response as our candidate, in the SDP part of our SIP packages.
+         * Essentially it's pointless to send local candidates, which are local IP-addresses, because we never want to establish a
+         * peer-to-peer WebRTC connection, but always want to use a third-party.
+         * So our logic for ICE candidates is as following, when we have "forceUseStunResponse" enabled:
+         * - If our call is ingoing
+         * -- Don't listen to ICE candidate events, but instead listen to the "selectedcandidatepairchange"-event. What that allows us to do
+         *    is to wait untill the WebRTC connection has been established (which will use our public IP from the STUN response), and then run our ready event,
+         *    rewriting the SDP to only have that candidate. Essentially this means that our SIP OK response will only have our public IP address as candidate.
+         * - If our call is outgoing
+         * -- Listen to the ICE candidate events still (the "selectedcandidatepairchange"-event does not work here), but save the public ICE-candidate in a variable,
+         *    and if we ever found it, try to rewrite our SDP to only have that candidate. If it's null, then just proceed as normal (in case we have problems with the ICE candidates again).
+         * 
+         * The reason this "forceUseStunResponse"-option is necessary, is that the ICE candidate events don't consistently give us our response from the STUN server as an ICE-candidate,
+         * which I believe might be a browser bug, or an issue in the implementation. What is odd is that the public IP is still usen as our local candidate, but we never get the candidate
+         * through the event.
          */
 
-        var readyOnSelectedCandidatePair = (constraints === null || constraints === void 0 ? void 0 : constraints.readyOnSelectedCandidatePair) && type === 'answer';
-        var iceTransport = type === 'answer' ? connection === null || connection === void 0 || (_connection$getSender = connection.getSenders()) === null || _connection$getSender === void 0 || (_connection$getSender = _connection$getSender[0]) === null || _connection$getSender === void 0 || (_connection$getSender = _connection$getSender.transport) === null || _connection$getSender === void 0 ? void 0 : _connection$getSender.iceTransport : null;
+        var hasIceServers = ((_connection$getConfig = connection.getConfiguration().iceServers) === null || _connection$getConfig === void 0 ? void 0 : _connection$getConfig.length) > 0;
+        var iceTransport = constraints !== null && constraints !== void 0 && constraints.forceUseStunResponse && hasIceServers ? connection === null || connection === void 0 || (_connection$getSender = connection.getSenders()) === null || _connection$getSender === void 0 || (_connection$getSender = _connection$getSender[0]) === null || _connection$getSender === void 0 || (_connection$getSender = _connection$getSender.transport) === null || _connection$getSender === void 0 ? void 0 : _connection$getSender.iceTransport : null;
+        var forceUseStunResponse = (constraints === null || constraints === void 0 ? void 0 : constraints.forceUseStunResponse) && iceTransport != null;
+        var forceUseStunResponseAndIsOutgoing = forceUseStunResponse && type === 'offer';
+        var forceUseStunResponseAndIsIngoing = forceUseStunResponse && type === 'answer';
+        var publicIceCandidate;
         if (connection.iceGatheringState === 'complete' && !iceRestart || connection.iceGatheringState === 'gathering' && _this13._iceReady) {
           _this13._rtcReady = true;
           var e = {
@@ -16132,8 +16148,13 @@ module.exports = /*#__PURE__*/function (_EventEmitter) {
             type: type,
             sdp: connection.localDescription.sdp
           };
-          if (readyOnSelectedCandidatePair) {
-            e.sdp = _this13._substituteIceCandidatesWithLocalCandidate(e.sdp, iceTransport.getSelectedCandidatePair().local.candidate);
+          if (forceUseStunResponse) {
+            var _publicIceCandidate;
+            if (forceUseStunResponseAndIsIngoing) {
+              e.sdp = _this13._substituteIceCandidatesWithLocalCandidate(e.sdp, iceTransport.getSelectedCandidatePair().local.candidate);
+            } else if (forceUseStunResponseAndIsOutgoing && (_publicIceCandidate = publicIceCandidate) !== null && _publicIceCandidate !== void 0 && _publicIceCandidate.candidate) {
+              e.sdp = _this13._substituteIceCandidatesWithLocalCandidate(e.sdp, publicIceCandidate.candidate);
+            }
           }
           logger.debug('emit "sdp"');
           _this13.emit('sdp', e);
@@ -16164,16 +16185,31 @@ module.exports = /*#__PURE__*/function (_EventEmitter) {
               type: type,
               sdp: connection.localDescription.sdp
             };
-            if (readyOnSelectedCandidatePair) {
-              e.sdp = _this13._substituteIceCandidatesWithLocalCandidate(e.sdp, iceTransport.getSelectedCandidatePair().local.candidate);
+
+            // if (forceUseStunResponse)
+            // {
+            //   e.sdp = this._substituteIceCandidatesWithLocalCandidate(e.sdp,
+            //     iceTransport.getSelectedCandidatePair().local.candidate);
+            // }
+            if (forceUseStunResponse) {
+              var _publicIceCandidate2;
+              if (forceUseStunResponseAndIsIngoing) {
+                e.sdp = _this13._substituteIceCandidatesWithLocalCandidate(e.sdp, iceTransport.getSelectedCandidatePair().local.candidate);
+              } else if (forceUseStunResponseAndIsOutgoing && (_publicIceCandidate2 = publicIceCandidate) !== null && _publicIceCandidate2 !== void 0 && _publicIceCandidate2.candidate) {
+                e.sdp = _this13._substituteIceCandidatesWithLocalCandidate(e.sdp, publicIceCandidate.candidate);
+              }
             }
             logger.debug('emit "sdp"');
             _this13.emit('sdp', e);
             resolve(e.sdp);
           };
-          if (!readyOnSelectedCandidatePair) {
+          if (!forceUseStunResponse || forceUseStunResponseAndIsOutgoing) {
             connection.addEventListener('icecandidate', iceCandidateListener = function iceCandidateListener(event) {
               var candidate = event.candidate;
+              var isStunResponse = event.candidate.type === 'srflx' && event.candidate.relatedAddress !== null && event.candidate.relatedPort !== null;
+              if (forceUseStunResponseAndIsOutgoing && isStunResponse) {
+                publicIceCandidate = candidate;
+              }
               if (candidate) {
                 _this13.emit('icecandidate', {
                   candidate: candidate,
@@ -16189,19 +16225,12 @@ module.exports = /*#__PURE__*/function (_EventEmitter) {
               }
             });
           }
-
-          /* TODO: Call iceTransport.getSelectedCandidatePair().local to get the local candidate.
-          ** That will possibly have the public IP. Use address and port
-          ** Test what it does without a stun.
-          ** Also test adding icecandidate listener earlier, to see that it's not because of skipping
-          */
-
-          if (readyOnSelectedCandidatePair) {
+          if (forceUseStunResponseAndIsIngoing) {
             iceTransport.addEventListener('selectedcandidatepairchange', selectedCandidatePairChangeListener = function selectedCandidatePairChangeListener() {
               _this13.emit('selectedcandidatepairchange', {
                 selectedCandidatePair: iceTransport.getSelectedCandidatePair()
               });
-              if (readyOnSelectedCandidatePair) {
+              if (forceUseStunResponse) {
                 ready();
               }
             });
