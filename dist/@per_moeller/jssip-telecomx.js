@@ -1,5 +1,5 @@
 /*
- * JsSIP v3.10.4
+ * JsSIP v3.11.4
  * the Javascript SIP library
  * Copyright: 2012-2024 
  * Homepage: https://jssip.net
@@ -16102,7 +16102,6 @@ module.exports = /*#__PURE__*/function (_EventEmitter) {
       .then(function (desc) {
         return connection.setLocalDescription(desc)["catch"](function (error) {
           _this13._rtcReady = true;
-          logger.warn('emit "peerconnection:setlocaldescriptionfailed" [error:%o]', error);
           _this13.emit('peerconnection:setlocaldescriptionfailed', error);
           return Promise.reject(error);
         });
@@ -16149,12 +16148,7 @@ module.exports = /*#__PURE__*/function (_EventEmitter) {
             sdp: connection.localDescription.sdp
           };
           if (forceUseStunResponse) {
-            var _publicIceCandidate;
-            if (forceUseStunResponseAndIsIngoing) {
-              e.sdp = _this13._substituteIceCandidatesWithLocalCandidate(e.sdp, iceTransport.getSelectedCandidatePair().local.candidate);
-            } else if (forceUseStunResponseAndIsOutgoing && (_publicIceCandidate = publicIceCandidate) !== null && _publicIceCandidate !== void 0 && _publicIceCandidate.candidate) {
-              e.sdp = _this13._substituteIceCandidatesWithLocalCandidate(e.sdp, publicIceCandidate.candidate);
-            }
+            e.sdp = _this13._correctSdpIfForcingStun(e.sdp, forceUseStunResponseAndIsIngoing, forceUseStunResponseAndIsOutgoing, iceTransport, publicIceCandidate);
           }
           logger.debug('emit "sdp"');
           _this13.emit('sdp', e);
@@ -16185,19 +16179,8 @@ module.exports = /*#__PURE__*/function (_EventEmitter) {
               type: type,
               sdp: connection.localDescription.sdp
             };
-
-            // if (forceUseStunResponse)
-            // {
-            //   e.sdp = this._substituteIceCandidatesWithLocalCandidate(e.sdp,
-            //     iceTransport.getSelectedCandidatePair().local.candidate);
-            // }
             if (forceUseStunResponse) {
-              var _publicIceCandidate2;
-              if (forceUseStunResponseAndIsIngoing) {
-                e.sdp = _this13._substituteIceCandidatesWithLocalCandidate(e.sdp, iceTransport.getSelectedCandidatePair().local.candidate);
-              } else if (forceUseStunResponseAndIsOutgoing && (_publicIceCandidate2 = publicIceCandidate) !== null && _publicIceCandidate2 !== void 0 && _publicIceCandidate2.candidate) {
-                e.sdp = _this13._substituteIceCandidatesWithLocalCandidate(e.sdp, publicIceCandidate.candidate);
-              }
+              e.sdp = _this13._correctSdpIfForcingStun(e.sdp, forceUseStunResponseAndIsIngoing, forceUseStunResponseAndIsOutgoing, iceTransport, publicIceCandidate);
             }
             logger.debug('emit "sdp"');
             _this13.emit('sdp', e);
@@ -16207,7 +16190,7 @@ module.exports = /*#__PURE__*/function (_EventEmitter) {
             connection.addEventListener('icecandidate', iceCandidateListener = function iceCandidateListener(event) {
               var candidate = event.candidate;
               var isStunResponse = event.candidate.type === 'srflx' && event.candidate.relatedAddress !== null && event.candidate.relatedPort !== null;
-              if (forceUseStunResponseAndIsOutgoing && isStunResponse) {
+              if (forceUseStunResponseAndIsOutgoing && isStunResponse && !publicIceCandidate) {
                 publicIceCandidate = candidate;
               }
               if (candidate) {
@@ -17582,6 +17565,22 @@ module.exports = /*#__PURE__*/function (_EventEmitter) {
 
       return newSdp;
       // const e = { originator: 'local', type: type, sdp: connection.localDescription.sdp };
+    }
+  }, {
+    key: "_correctSdpIfForcingStun",
+    value: function _correctSdpIfForcingStun(sdp, forceUseStunResponseAndIsIngoing, forceUseStunResponseAndIsOutgoing, iceTransport, publicIceCandidate) {
+      if (forceUseStunResponseAndIsIngoing) {
+        var _this$_substituteIceC;
+        return (_this$_substituteIceC = this._substituteIceCandidatesWithLocalCandidate(sdp, iceTransport.getSelectedCandidatePair().local.candidate)) !== null && _this$_substituteIceC !== void 0 ? _this$_substituteIceC : sdp;
+      } else if (forceUseStunResponseAndIsOutgoing) {
+        var _iceTransport$getSele;
+        var bestCandidate = publicIceCandidate !== null && publicIceCandidate !== void 0 ? publicIceCandidate : iceTransport === null || iceTransport === void 0 || (_iceTransport$getSele = iceTransport.getSelectedCandidatePair()) === null || _iceTransport$getSele === void 0 ? void 0 : _iceTransport$getSele.local;
+        if (bestCandidate !== null && bestCandidate !== void 0 && bestCandidate.candidate) {
+          var _this$_substituteIceC2;
+          return (_this$_substituteIceC2 = this._substituteIceCandidatesWithLocalCandidate(sdp, bestCandidate.candidate)) !== null && _this$_substituteIceC2 !== void 0 ? _this$_substituteIceC2 : sdp;
+        }
+      }
+      return sdp;
     }
   }], [{
     key: "C",
@@ -24665,7 +24664,7 @@ module.exports={
   "name": "@per_moeller/jssip-telecomx",
   "title": "JsSIP",
   "description": "the Javascript SIP library",
-  "version": "3.10.4",
+  "version": "3.11.4",
   "homepage": "https://jssip.net",
   "contributors": [
     "José Luis Millán <jmillan@aliax.net> (https://github.com/jmillan)",
